@@ -1,15 +1,13 @@
 import React from 'react'
 import ReactDOM from 'react-dom'
-import LinkedStateMixin from 'react-addons-linked-state-mixin'
 
 import ImageGallery from '../src/ImageGallery.react'
 
-const App = React.createClass({
+class App extends React.Component {
 
-  mixins: [LinkedStateMixin],
-
-  getInitialState() {
-    return {
+  constructor() {
+    super()
+    this.state = {
       isPlaying: false,
       showIndex: false,
       slideOnThumbnailHover: false,
@@ -18,7 +16,7 @@ const App = React.createClass({
       showNav: true,
       slideInterval: 4000
     }
-  },
+  }
 
   componentDidUpdate(prevProps, prevState) {
     if (this.state.slideInterval !== prevState.slideInterval) {
@@ -26,21 +24,30 @@ const App = React.createClass({
       this._pauseSlider()
       this._playSlider()
     }
-  },
+  }
 
   _pauseSlider() {
     if (this._imageGallery) {
       this._imageGallery.pause()
       this.setState({isPlaying: false})
     }
-  },
+  }
 
   _playSlider() {
     if (this._imageGallery) {
       this._imageGallery.play()
       this.setState({isPlaying: true})
     }
-  },
+  }
+
+  _handleInputChange(state, event) {
+    this.setState({[state]: event.target.value})
+  }
+
+  _handleCheckboxChange(state, event) {
+    console.debug(state)
+    this.setState({[state]: event.target.checked})
+  }
 
   render() {
     const images = [
@@ -102,7 +109,7 @@ const App = React.createClass({
 
       <section className='app'>
         <ImageGallery
-          ref={(i) => this._imageGallery = i}
+          ref={i => this._imageGallery = i}
           items={images}
           lazyLoad={false}
           showBullets={this.state.showBullets}
@@ -122,14 +129,14 @@ const App = React.createClass({
             <li>
               <a
                 className={'app-button ' + (this.state.isPlaying ? 'active' : '')}
-                onClick={this._playSlider}>
+                onClick={this._playSlider.bind(this)}>
                 Play
               </a>
             </li>
             <li>
             <a
               className={'app-button ' + (!this.state.isPlaying ? 'active' : '')}
-              onClick={this._pauseSlider}>
+              onClick={this._pauseSlider.bind(this)}>
               Pause
             </a>
             </li>
@@ -138,41 +145,47 @@ const App = React.createClass({
               <input
                 type='text'
                 placeholder='SlideInterval'
-                valueLink={this.linkState('slideInterval')}/>
+                onChange={this._handleInputChange.bind(this, 'slideInterval')}
+                value={this.state.slideInterval}/>
             </li>
             <li>
               <input
                 id='show_bullets'
                 type='checkbox'
-                checkedLink={this.linkState('showBullets')}/>
+                onChange={this._handleCheckboxChange.bind(this, 'showBullets')}
+                checked={this.state.showBullets}/>
                 <label htmlFor='show_bullets'>show bullets?</label>
             </li>
             <li>
               <input
                 id='show_thumbnails'
                 type='checkbox'
-                checkedLink={this.linkState('showThumbnails')}/>
+                onChange={this._handleCheckboxChange.bind(this, 'showThumbnails')}
+                checked={this.state.showThumbnails}/>
                 <label htmlFor='show_thumbnails'>show thumbnails?</label>
             </li>
             <li>
               <input
                 id='show_navigation'
                 type='checkbox'
-                checkedLink={this.linkState('showNav')}/>
+                onChange={this._handleCheckboxChange.bind(this, 'showNav')}
+                checked={this.state.showNav}/>
                 <label htmlFor='show_navigation'>show navigation?</label>
             </li>
             <li>
               <input
                 id='show_index'
                 type='checkbox'
-                checkedLink={this.linkState('showIndex')}/>
+                onChange={this._handleCheckboxChange.bind(this, 'showIndex')}
+                checked={this.state.showIndex}/>
                 <label htmlFor='show_index'>show index?</label>
             </li>
             <li>
               <input
                 id='slide_on_thumbnail_hover'
                 type='checkbox'
-                checkedLink={this.linkState('slideOnThumbnailHover')}/>
+                onChange={this._handleCheckboxChange.bind(this, 'slideOnThumbnailHover')}
+                checked={this.state.slideOnThumbnailHover}/>
                 <label htmlFor='slide_on_thumbnail_hover'>slide on thumbnail hover?</label>
             </li>
           </ul>
@@ -181,8 +194,7 @@ const App = React.createClass({
       </section>
     )
   }
-
-})
+}
 
 ReactDOM.render(<App/>, document.getElementById('container'))
 

@@ -1,4 +1,3 @@
-var babelify = require('babelify')
 var babel = require('gulp-babel')
 var browserify = require('browserify')
 var concat = require('gulp-concat')
@@ -7,10 +6,8 @@ var gulp = require('gulp')
 var livereload = require('gulp-livereload')
 var rename = require('gulp-rename')
 var sass = require('gulp-sass')
-var sourcemaps = require('gulp-sourcemaps')
 var source = require('vinyl-source-stream')
 var buffer = require('vinyl-buffer')
-var uglify = require('gulp-uglify')
 var watchify = require('watchify')
 
 gulp.task('server', function () {
@@ -31,16 +28,13 @@ gulp.task('sass', function () {
 
 gulp.task('scripts', function() {
   watchify(browserify({
-    entries: ['./example/app.js'],
+    entries: './example/app.js',
     extensions: ['.jsx'],
-    transform: [babelify]
-  }))
+    debug: true
+  }).transform('babelify', {presets: ['es2015', 'react']}))
     .bundle()
     .pipe(source('example.js'))
     .pipe(buffer())
-    .pipe(sourcemaps.init({loadMaps: true}))
-    .pipe(uglify())
-    .pipe(sourcemaps.write('.'))
     .pipe(gulp.dest('./example/'))
     .pipe(livereload())
 })

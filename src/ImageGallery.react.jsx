@@ -1,6 +1,10 @@
 import React from 'react'
 import Swipeable from 'react-swipeable'
 
+const LEFT = 'left'
+const CENTER = 'center'
+const RIGHT = 'right'
+
 export default class ImageGallery extends React.Component {
 
   constructor(props) {
@@ -8,7 +12,9 @@ export default class ImageGallery extends React.Component {
     this.state = {
       currentIndex: props.startIndex,
       thumbnailsTranslateX: 0,
-      containerWidth: 0
+      offsetPercentage: 0,
+      containerWidth: 0,
+      slideStyles: []
     }
     this._handleResize = this._handleResize.bind(this)
   }
@@ -74,25 +80,6 @@ export default class ImageGallery extends React.Component {
     if (this._intervalId) {
       window.clearInterval(this._intervalId)
       this._intervalId = null
-    }
-  }
-
-  slideToIndex(index, event) {
-    let slideCount = this.props.items.length - 1
-
-    if (index < 0) {
-      this.setState({currentIndex: slideCount})
-    } else if (index > slideCount) {
-      this.setState({currentIndex: 0})
-    } else {
-      this.setState({currentIndex: index})
-    }
-    if (event) {
-      if (this._intervalId) {
-        // user event, reset interval
-        this.pause()
-        this.play()
-      }
     }
   }
 
@@ -200,23 +187,23 @@ export default class ImageGallery extends React.Component {
     let alignment = ''
     switch (index) {
       case (currentIndex - 1):
-        alignment = ' left'
+        alignment = ` ${LEFT}`
         break
       case (currentIndex):
-        alignment = ' center'
+        alignment = ` ${CENTER}`
         break
       case (currentIndex + 1):
-        alignment = ' right'
+        alignment = ` ${RIGHT}`
         break
     }
 
     if (this.props.items.length >= 3) {
       if (index === 0 && currentIndex === this.props.items.length - 1) {
         // set first slide as right slide if were sliding right from last slide
-        alignment = ' right'
+        alignment = ` ${RIGHT}`
       } else if (index === this.props.items.length - 1 && currentIndex === 0) {
         // set last slide as left slide if were sliding left from first slide
-        alignment = ' left'
+        alignment = ` ${LEFT}`
       }
     }
 
@@ -227,7 +214,7 @@ export default class ImageGallery extends React.Component {
     // slide images have an opacity of 0, onLoad the class 'loaded' is added
     // so that it transitions smoothly when navigating to non adjacent slides
     if (event.target.className.indexOf('loaded') === -1) {
-      event.target.className += ' loaded'
+      event.target.className += 'loaded'
     }
   }
 
@@ -241,41 +228,149 @@ export default class ImageGallery extends React.Component {
     return this.props.items.length >= 2
   }
 
-  render() {
-    let currentIndex = this.state.currentIndex
-    let thumbnailStyle = {
-      MozTransform: 'translate3d(' + this.state.thumbnailsTranslateX + 'px, 0, 0)',
-      WebkitTransform: 'translate3d(' + this.state.thumbnailsTranslateX + 'px, 0, 0)',
-      OTransform: 'translate3d(' + this.state.thumbnailsTranslateX + 'px, 0, 0)',
-      msTransform: 'translate3d(' + this.state.thumbnailsTranslateX + 'px, 0, 0)',
-      transform: 'translate3d(' + this.state.thumbnailsTranslateX + 'px, 0, 0)'
+  _swipingRight(_, delta) {
+    const offsetPercentage = delta / this.state.containerWidth * 100
+    this.setState({offsetPercentage})
+  }
+
+  _swipingLeft(_, delta) {
+    const offsetPercentage = -delta / this.state.containerWidth * 100
+    this.setState({offsetPercentage})
+  }
+
+  slideToIndex(index, event) {
+    let slideCount = this.props.items.length - 1
+
+    let currentIndex
+
+    if (index < 0) {
+      currentIndex = slideCount
+    } else if (index > slideCount) {
+      currentIndex = 0
+    } else {
+      currentIndex = index
     }
-    let swipePrev = this.slideToIndex.bind(this, currentIndex - 1)
-    let swipeNext = this.slideToIndex.bind(this, currentIndex + 1)
+
+    let style = {}
+    // only display the current index, and the next index slide
+    if (index === this.state.currentIndex || currentIndex === index) {
+      style = {
+        transition: 'transform .45s ease-out'
+      }
+    } else {
+      style = {
+        display: 'none'
+      }
+    }
+
+    this.setState({
+      currentIndex: currentIndex,
+      offsetPercentage: 0,
+      style: style
+    })
+
+    window.setTimeout(() => {
+      this.setState({style: {}})
+    }, 500)
+
+    if (event) {
+      if (this._intervalId) {
+        // user event, reset interval
+        this.pause()
+        this.play()
+      }
+    }
+  }
+
+  _setSlideStyles() {
+    this.props.items.map((item, index) => {
+      this.state.slideStyles[index] = this._getSlideStyle(index)
+      this.setState({
+         slideStyles: this.state.slideStyles.slice(0)
+      })
+    })
+  }
+
+  _getSlideStyle(index) {
+    const {currentIndex} = this.state
+    const basetranslateX = -100 * currentIndex
+    const totalSlides = this.props.items.length - 1
+
+    let translateX = basetranslateX + (index * 100) + this.state.offsetPercentage
+
+    if (currentIndex === 0 && index === totalSlides) {
+      // make the last slide the slide before the first
+      translateX = -100 + this.state.offsetPercentage
+    } else if (currentIndex === totalSlides && index === 0) {
+      // make the first slide the slide after the last
+      //XIAO TODO TEST with less than 3 images
+      translateX = 100 + this.state.offsetPercentage
+    }
+
+    const translate3D = `translate3d(${translateX}%, 0, 0)`
+    return {
+      transform: translate3D
+    }
+  }
+
+  _getThumbnailStyle() {
+    const translate3D = `translate3d(${this.state.thumbnailsTranslateX}px, 0, 0)`
+    return {
+      transform: translate3D
+    }
+
+  }
+
+  _handleOnSwiped(ev, x, y, isFlick) {
+    this.setState({isFlick: isFlick})
+  }
+
+  render() {
+    const currentIndex = this.state.currentIndex
+    const thumbnailStyle = this._getThumbnailStyle()
+
+    const swipePrev = this.slideToIndex.bind(this, currentIndex - 1)
+    const swipeNext = this.slideToIndex.bind(this, currentIndex + 1)
+
+    const swipingPrev = this._swipingRight.bind(this)
+    const swipingNext = this._swipingLeft.bind(this)
+
+    const offsetPercentage = Math.abs(this.state.offsetPercentage)
+    const isFlick = this.state.isFlick
 
     let slides = []
     let thumbnails = []
     let bullets = []
 
     this.props.items.map((item, index) => {
-      let alignment = this._getAlignmentClassName(index)
-      let originalClass = item.originalClass ? ' ' + item.originalClass : ''
-      let thumbnailClass = item.thumbnailClass ? ' ' + item.thumbnailClass : ''
+      const alignment = this._getAlignmentClassName(index)
+      const originalClass = item.originalClass ? ' ' + item.originalClass : ''
+      const thumbnailClass = item.thumbnailClass ? ' ' + item.thumbnailClass : ''
+      const slideStyle = Object.assign(
+        this._getSlideStyle(index) || {}, this.state.style)
 
-      let slide = (
+      const slide = (
         <div
           key={index}
           className={'image-gallery-slide' + alignment + originalClass}
+          style={slideStyle}
           onClick={this._wrapClick(this.props.onClick)}
           onTouchStart={this.props.onClick}
-          onTouchEnd={this._touchEnd.bind(this)} >
-            <img
-              className={this.props.server ? 'loaded' : null}
-              src={item.original}
-              alt={item.originalAlt}
-              onLoad={this._handleImageLoad}
-              onError={this._handleImageError}/>
-            {item.description}
+          onTouchEnd={this._touchEnd.bind(this)}
+        >
+          <img
+            className={this.props.server ? 'loaded' : null}
+            src={item.original}
+            alt={item.originalAlt}
+            onLoad={this._handleImageLoad}
+            onError={this._handleImageError}
+          />
+          {
+            item.description &&
+              <span className='image-gallery-description'>
+                {item.description}
+              </span>
+          }
         </div>
       )
 
@@ -352,9 +447,14 @@ export default class ImageGallery extends React.Component {
                       onClick={this._wrapClick(swipeNext)}/>
                   ],
                 <Swipeable
+                  className='image-gallery-swipe'
                   key='swipeable'
-                  onSwipedLeft={swipeNext}
-                  onSwipedRight={swipePrev}>
+                  onSwipingLeft={swipingNext}
+                  onSwipingRight={swipingPrev}
+                  onSwiped={this._handleOnSwiped.bind(this)}
+                  onSwipedLeft={offsetPercentage > 30 || isFlick ? swipeNext : this.slideToIndex.bind(this, currentIndex)}
+                  onSwipedRight={offsetPercentage > 30 || isFlick ? swipePrev : this.slideToIndex.bind(this, currentIndex)}
+                >
                   <div className='image-gallery-slides'>
                     {slides}
                   </div>
