@@ -1,3 +1,5 @@
+
+React 轮播图插件
 React Image Gallery
 ===
 
